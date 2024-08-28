@@ -2,70 +2,45 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 import java.util.Scanner;
 
 public class A1 {
     public static void main(String[] args) {
-        if (args.length < 1) {
-            System.out.println("Please provide an input file.");
+        if (args.length != 1) {
+            System.out.println("Usage: java A1 <input file>");
             return;
         }
 
-        String filename = args[0];
-        List<Process> processList = new ArrayList<>();
-        int dispatcherTime = 0;
-        List<Integer> randomNumbers = new ArrayList<>();
+        String inputFileName = args[0];
+        try (Scanner scanner = new Scanner(new File(inputFileName))) {
+            int dispatcherTime = 0;
+            List<Process> processes = new ArrayList<>();
 
-        try (Scanner scanner = new Scanner(new File(filename))) {
-            String section = "";
             while (scanner.hasNextLine()) {
                 String line = scanner.nextLine().trim();
-                if (line.equals("BEGIN")) {
-                    section = "PROCESS";
-                } else if (line.equals("BEGINRANDOM")) {
-                    section = "RANDOM";
-                } else if (line.equals("END")) {
-                    section = "";
-                } else if (line.equals("ENDRANDOM")) {
-                    section = "";
-                } else if (section.equals("PROCESS")) {
-                    if (line.startsWith("PID:")) {
-                        String pid = line.substring(4).trim();
-                        int arrivalTime = Integer.parseInt(scanner.nextLine().trim().substring(8).trim());
-                        int serviceTime = Integer.parseInt(scanner.nextLine().trim().substring(8).trim());
-                        int tickets = Integer.parseInt(scanner.nextLine().trim().substring(8).trim());
-                        processList.add(new Process(pid, arrivalTime, serviceTime, tickets));
-                    }
-                } else if (section.equals("RANDOM")) {
-                    if (line.matches("\\d+")) {
-                        randomNumbers.add(Integer.parseInt(line));
-                    }
-                } else if (line.startsWith("DISP:")) {
-                    dispatcherTime = Integer.parseInt(line.substring(5).trim());
+                if (line.startsWith("DISP:")) {
+                    dispatcherTime = Integer.parseInt(line.split(":")[1].trim());
+                } else if (line.startsWith("PID:")) {
+                    String id = line.split(":")[1].trim();
+                    int arrivalTime = Integer.parseInt(scanner.nextLine().split(":")[1].trim());
+                    int serviceTime = Integer.parseInt(scanner.nextLine().split(":")[1].trim());
+                    int tickets = Integer.parseInt(scanner.nextLine().split(":")[1].trim());
+                    processes.add(new Process(id, arrivalTime, serviceTime, tickets));
                 }
             }
+
+            // Schedule using FCFS
+            FCFS fcfs = new FCFS();
+            fcfs.schedule(processes, dispatcherTime);
+
+            // Print Summary
+            System.out.println("\nSummary");
+            System.out.printf("Algorithm  Average Turnaround Time  Waiting Time\n");
+            System.out.printf("FCFS       %-23.2f %-14.2f\n", fcfs.getAverageTurnaroundTime(), fcfs.getAverageWaitingTime());
         } catch (FileNotFoundException e) {
-            System.out.println("File not found: " + filename);
-            return;
+            System.out.println("Error: File not found - " + inputFileName);
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
         }
-
-        // Debug statements
-        System.out.println("Process list: " + processList);
-        System.out.println("Dispatcher Time: " + dispatcherTime);
-        System.out.println("Random Numbers: " + randomNumbers);
-
-        // Example of creating schedulers and running them
-        Scheduler fcfs = new FCFS(new ArrayList<>(processList), dispatcherTime);
-        fcfs.schedule();
-
-        Scheduler srt = new SRT(new ArrayList<>(processList), dispatcherTime);
-        srt.schedule();
-
-        Scheduler fbv = new FBV(new ArrayList<>(processList), dispatcherTime);
-        fbv.schedule();
-
-        Scheduler ltr = new LTR(new ArrayList<>(processList), dispatcherTime, randomNumbers);
-        ltr.schedule();
     }
 }

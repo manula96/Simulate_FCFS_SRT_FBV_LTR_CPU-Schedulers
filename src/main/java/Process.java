@@ -1,25 +1,56 @@
-class Process {
-    String pid;
-    int arrivalTime;
-    int serviceTime;
-    int tickets;
-    int remainingTime;
-    int turnaroundTime;
-    int waitingTime;
+public class Process {
+    private String id;
+    private int arrivalTime;
+    private int serviceTime;
+    private int tickets;
 
-    Process(String pid, int arrivalTime, int serviceTime, int tickets) {
-        this.pid = pid;
+    private int startTime;
+    private int finishTime;
+
+    public Process(String id, int arrivalTime, int serviceTime, int tickets) {
+        this.id = id;
         this.arrivalTime = arrivalTime;
         this.serviceTime = serviceTime;
         this.tickets = tickets;
-        this.remainingTime = serviceTime;
-        this.turnaroundTime = 0;
-        this.waitingTime = 0;
     }
 
-    @Override
-    public String toString() {
-        return String.format("Process(pid=%s, arrivalTime=%d, serviceTime=%d, tickets=%d, remainingTime=%d, turnaroundTime=%d, waitingTime=%d)",
-                pid, arrivalTime, serviceTime, tickets, remainingTime, turnaroundTime, waitingTime);
+    public String getId() {
+        return id;
+    }
+
+    public int getArrivalTime() {
+        return arrivalTime;
+    }
+
+    public int getServiceTime() {
+        return serviceTime;
+    }
+
+    public int getTickets() {
+        return tickets;
+    }
+
+    public int getStartTime() {
+        return startTime;
+    }
+
+    public void setStartTime(int startTime) {
+        this.startTime = startTime;
+    }
+
+    public int getFinishTime() {
+        return finishTime;
+    }
+
+    public void setFinishTime(int finishTime) {
+        this.finishTime = finishTime;
+    }
+
+    public int getTurnaroundTime() {
+        return finishTime - arrivalTime;
+    }
+
+    public int getWaitingTime() {
+        return getTurnaroundTime() - serviceTime;
     }
 }
