@@ -33,10 +33,15 @@ public class A1 {
             FCFS fcfs = new FCFS();
             fcfs.schedule(processes, dispatcherTime);
 
+            // Schedule using SRT
+            SRT srt = new SRT();
+            srt.schedule(processes, dispatcherTime);
+
             // Print Summary
             System.out.println("\nSummary");
             System.out.printf("Algorithm  Average Turnaround Time  Waiting Time\n");
             System.out.printf("FCFS       %-23.2f %-14.2f\n", fcfs.getAverageTurnaroundTime(), fcfs.getAverageWaitingTime());
+            System.out.printf("SRT        %-23.2f %-14.2f\n", srt.getAverageTurnaroundTime(), srt.getAverageWaitingTime());
         } catch (FileNotFoundException e) {
             System.out.println("Error: File not found - " + inputFileName);
         } catch (Exception e) {

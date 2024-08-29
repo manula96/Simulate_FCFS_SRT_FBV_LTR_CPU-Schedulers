@@ -2,6 +2,7 @@ public class Process {
     private String id;
     private int arrivalTime;
     private int serviceTime;
+    private int remainingTime;
     private int tickets;
 
     private int startTime;
@@ -11,6 +12,7 @@ public class Process {
         this.id = id;
         this.arrivalTime = arrivalTime;
         this.serviceTime = serviceTime;
+        this.remainingTime = serviceTime;  // Initially, remaining time is equal to service time
         this.tickets = tickets;
     }
 
@@ -24,6 +26,18 @@ public class Process {
 
     public int getServiceTime() {
         return serviceTime;
+    }
+
+    public int getRemainingTime() {
+        return remainingTime;
+    }
+
+    public void runFor(int time) {
+        remainingTime -= time;
+    }
+
+    public boolean isFinished() {
+        return remainingTime <= 0;
     }
 
     public int getTickets() {
