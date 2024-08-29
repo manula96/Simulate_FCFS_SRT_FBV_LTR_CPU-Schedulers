@@ -18,7 +18,7 @@ public class SRT implements Scheduler {
         int totalWaitingTime = 0;
         List<Process> completedProcesses = new ArrayList<>();
 
-        System.out.println("SRT:");
+        System.out.println("\nSRT:");
 
         // A list to hold the current processes that are in the ready queue
         List<Process> readyQueue = new ArrayList<>();
