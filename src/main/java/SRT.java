@@ -39,13 +39,15 @@ public class SRT implements Scheduler {
 
                 currentProcess = readyQueue.poll();
 
-                if (currentProcess != null && currentProcess.getStartTime() == 0) {
-                    currentProcess.setStartTime(currentTime + dispatcherTime);
+                if (currentProcess != null) {
+                    if (currentProcess.getStartTime() == 0) {
+                        currentProcess.setStartTime(currentTime + dispatcherTime);
+                    }
+
+                    currentTime += dispatcherTime; // Apply dispatcher time when switching processes
+
+                    System.out.println("T" + currentTime + ": " + currentProcess.getId());
                 }
-
-                currentTime += dispatcherTime; // Apply dispatcher time when switching processes
-
-                System.out.println("T" + currentTime + ": " + currentProcess.getId());
             }
 
             // Execute the current process for one time unit
@@ -60,7 +62,13 @@ public class SRT implements Scheduler {
                     totalWaitingTime += currentProcess.getWaitingTime();
                     completedProcesses++;
                 }
+            } else {
+                currentTime++; // Increment time even if no process is running
             }
+        }
+
+        if (currentProcess != null) {
+            System.out.println("T" + currentTime + ": " + currentProcess.getId());
         }
 
         averageTurnaroundTime = (double) totalTurnaroundTime / processes.size();
