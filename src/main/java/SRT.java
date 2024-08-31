@@ -12,7 +12,11 @@ public class SRT implements Scheduler {
         this.processes = processes;
         processes.sort(Comparator.comparingInt(Process::getArrivalTime));
 
-        PriorityQueue<Process> readyQueue = new PriorityQueue<>(Comparator.comparingInt(Process::getRemainingTime));
+        PriorityQueue<Process> readyQueue = new PriorityQueue<>(
+                Comparator.comparingInt(Process::getRemainingTime)
+                        .thenComparing(Process::getId)
+        );
+
         int currentTime = 0;
         int totalTurnaroundTime = 0;
         int totalWaitingTime = 0;
@@ -29,22 +33,22 @@ public class SRT implements Scheduler {
                 }
             }
 
-            // If there's no current process, or the current process is finished, or a new process has shorter remaining time
+            // If no current process or need to switch due to shorter remaining time
             if (currentProcess == null || currentProcess.isFinished() ||
                     (!readyQueue.isEmpty() && readyQueue.peek().getRemainingTime() < currentProcess.getRemainingTime())) {
 
                 if (currentProcess != null && !currentProcess.isFinished()) {
-                    readyQueue.add(currentProcess); // Put the current process back into the ready queue if it's not finished
+                    readyQueue.add(currentProcess);
                 }
 
-                currentProcess = readyQueue.poll();
+                if (!readyQueue.isEmpty()) {
+                    currentProcess = readyQueue.poll();
 
-                if (currentProcess != null) {
-                    if (currentProcess.getStartTime() == 0) {
-                        currentProcess.setStartTime(currentTime + dispatcherTime);
-                    }
-
+                    // Dispatcher time rules: dispatcher only considers processes that arrived before or at the current time
                     currentTime += dispatcherTime; // Apply dispatcher time when switching processes
+                    if (currentProcess.getStartTime() == 0) {
+                        currentProcess.setStartTime(currentTime);
+                    }
 
                     System.out.println("T" + currentTime + ": " + currentProcess.getId());
                 }
@@ -55,7 +59,7 @@ public class SRT implements Scheduler {
                 currentProcess.runFor(1);
                 currentTime++;
 
-                // If the current process finishes, calculate its turnaround and waiting times
+                // If the current process finishes, calculate its times
                 if (currentProcess.isFinished()) {
                     currentProcess.setFinishTime(currentTime);
                     totalTurnaroundTime += currentProcess.getTurnaroundTime();
@@ -63,12 +67,8 @@ public class SRT implements Scheduler {
                     completedProcesses++;
                 }
             } else {
-                currentTime++; // Increment time even if no process is running
+                currentTime++; // Increment time even if no process is ready
             }
-        }
-
-        if (currentProcess != null) {
-            System.out.println("T" + currentTime + ": " + currentProcess.getId());
         }
 
         averageTurnaroundTime = (double) totalTurnaroundTime / processes.size();
