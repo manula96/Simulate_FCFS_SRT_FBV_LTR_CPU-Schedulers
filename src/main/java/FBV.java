@@ -1,28 +1,39 @@
+/*
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 
 public class FBV implements Scheduler {
     private List<Process> processes;
-    private int dispatcherTime;
+
     private double averageTurnaroundTime;
     private double averageWaitingTime;
 
+    private static class ProcessWithQueue3Time {
+        Process process;
+        int timeInQueue3;
+
+        ProcessWithQueue3Time(Process process) {
+            this.process = process;
+            this.timeInQueue3 = 0;
+        }
+    }
+
     @Override
     public void schedule(List<Process> processes, int dispatcherTime) {
-        this.processes = processes;
-        this.dispatcherTime = dispatcherTime;
+        this.processes = new LinkedList<>(processes);
 
         Queue<Process> queue1 = new LinkedList<>();
         Queue<Process> queue2 = new LinkedList<>();
-        Queue<Process> queue3 = new LinkedList<>();
+        Queue<ProcessWithQueue3Time> queue3 = new LinkedList<>();
 
         int currentTime = 0;
         int totalTurnaroundTime = 0;
         int totalWaitingTime = 0;
 
-        // Add processes to the first queue based on their arrival time
-        queue1.addAll(processes);
+        for (Process process : processes) {
+            queue1.add(process);
+        }
 
         System.out.println("\nFBV:");
 
@@ -31,27 +42,35 @@ public class FBV implements Scheduler {
 
             if (!queue1.isEmpty()) {
                 process = queue1.poll();
-                currentTime = Math.max(currentTime, process.getArrivalTime()) + dispatcherTime;
+                currentTime = Math.max(currentTime, process.getArrivalTime());
+                currentTime += dispatcherTime;
+                //System.out.println("Q1");
+
+                System.out.println("T" + currentTime + ": " + process.getId());
                 currentTime = executeProcess(process, currentTime, 2, queue2);
             } else if (!queue2.isEmpty()) {
                 process = queue2.poll();
+                //System.out.println("Q2");
+
                 currentTime += dispatcherTime;
+                System.out.println("T" + currentTime + ": " + process.getId());
                 currentTime = executeProcess(process, currentTime, 4, queue3);
             } else if (!queue3.isEmpty()) {
-                process = queue3.poll();
+                ProcessWithQueue3Time pwqt = queue3.poll();
+                process = pwqt.process;
+                //System.out.println("Q3");
+
                 currentTime += dispatcherTime;
-                if (currentTime - process.getStartTime() > 16) {
-                    // If the process has been in the lowest priority queue for more than 16ms
-                    queue1.add(process);
-                } else {
-                    currentTime = executeProcess(process, currentTime, 4, queue3);
-                }
+                System.out.println("T" + currentTime + ": " + process.getId());
+                currentTime = executeProcessInQueue3(pwqt, currentTime, 4, queue1, queue3);
+            } else {
+                currentTime++;
             }
 
             if (process != null && process.isFinished()) {
+                process.setFinishTime(currentTime);
                 totalTurnaroundTime += process.getTurnaroundTime();
                 totalWaitingTime += process.getWaitingTime();
-                System.out.println("T" + process.getStartTime() + ": " + process.getId());
             }
         }
 
@@ -61,16 +80,45 @@ public class FBV implements Scheduler {
         printResults();
     }
 
-    private int executeProcess(Process process, int currentTime, int timeQuantum, Queue<Process> nextQueue) {
-        process.setStartTime(currentTime);
+    private int executeProcess(Process process, int currentTime, int timeQuantum, Queue<?> nextQueue) {
+        if (process.getStartTime() == 0) {
+            process.setStartTime(currentTime);
+        }
 
-        if (process.getRemainingTime() > timeQuantum) {
-            process.runFor(timeQuantum);
-            currentTime += timeQuantum;
-            nextQueue.add(process);
+        int runTime = Math.min(process.getRemainingTime(), timeQuantum);
+        process.runFor(runTime);
+        currentTime += runTime;
+
+        if (process.getRemainingTime() > 0) {
+            if (nextQueue instanceof Queue) {
+                ((Queue<Process>) nextQueue).add(process);
+            } else if (nextQueue instanceof Queue) {
+                ((Queue<ProcessWithQueue3Time>) nextQueue).add(new ProcessWithQueue3Time(process));
+            }
         } else {
-            currentTime += process.getRemainingTime();
-            process.runFor(process.getRemainingTime());
+            process.setFinishTime(currentTime);
+        }
+
+        return currentTime;
+    }
+
+    private int executeProcessInQueue3(ProcessWithQueue3Time pwqt, int currentTime, int timeQuantum, Queue<Process> queue1, Queue<ProcessWithQueue3Time> queue3) {
+        Process process = pwqt.process;
+
+        int runTime = Math.min(process.getRemainingTime(), timeQuantum);
+        process.runFor(runTime);
+        currentTime += runTime;
+
+        pwqt.timeInQueue3 += runTime;
+
+        if (process.getRemainingTime() > 0) {
+            if (pwqt.timeInQueue3 >= 16) {
+                System.out.println("T" + currentTime + ": " + process.getId() + " (Boosted)");
+                queue1.add(process);
+            } else {
+                queue3.add(pwqt);
+            }
+        } else {
             process.setFinishTime(currentTime);
         }
 
@@ -81,8 +129,14 @@ public class FBV implements Scheduler {
     public void printResults() {
         System.out.println("\nProcess  Turnaround Time  Waiting Time");
         for (Process process : processes) {
-            System.out.printf("%-9s %-17d %-13d\n", process.getId(), process.getTurnaroundTime(), process.getWaitingTime());
+            int turnaroundTime = process.getFinishTime() - process.getArrivalTime();
+            int waitingTime = turnaroundTime - process.getServiceTime();
+            System.out.printf("%-9s %-17d %-13d\n", process.getId(), turnaroundTime, waitingTime);
         }
+
+        System.out.println("\nSummary");
+        System.out.printf("Algorithm  Average Turnaround Time  Average Waiting Time\n");
+        System.out.printf("FBV        %.2f                    %.2f\n", averageTurnaroundTime, averageWaitingTime);
     }
 
     public double getAverageTurnaroundTime() {
@@ -93,3 +147,4 @@ public class FBV implements Scheduler {
         return averageWaitingTime;
     }
 }
+*/

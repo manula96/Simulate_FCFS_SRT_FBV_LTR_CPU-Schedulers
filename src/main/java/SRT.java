@@ -1,87 +1,87 @@
 import java.util.List;
-import java.util.PriorityQueue;
-import java.util.Comparator;
+import java.util.ArrayList;
 
 public class SRT implements Scheduler {
-    private List<Process> processes;
-    private double averageTurnaroundTime;
-    private double averageWaitingTime;
+    private List<Process> completedProcesses = new ArrayList<>();
+    private double averageTurnaroundTime = 0.0;
+    private double averageWaitingTime = 0.0;
 
     @Override
     public void schedule(List<Process> processes, int dispatcherTime) {
-        this.processes = processes;
-        processes.sort(Comparator.comparingInt(Process::getArrivalTime));
-
-        PriorityQueue<Process> readyQueue = new PriorityQueue<>(
-                Comparator.comparingInt(Process::getRemainingTime)
-                        .thenComparing(Process::getId)
-        );
-
         int currentTime = 0;
-        int totalTurnaroundTime = 0;
-        int totalWaitingTime = 0;
-        int completedProcesses = 0;
+        List<Process> readyQueue = new ArrayList<>();
         Process currentProcess = null;
 
-        System.out.println("\nSRT:");
-
-        while (completedProcesses < processes.size()) {
-            // Add newly arrived processes to the ready queue
-            for (Process process : processes) {
-                if (process.getArrivalTime() == currentTime && !process.isFinished()) {
-                    readyQueue.add(process);
+        while (!processes.isEmpty() || !readyQueue.isEmpty() || currentProcess != null) {
+            // Add all processes that have arrived to the ready queue
+            for (int i = 0; i < processes.size(); i++) {
+                if (processes.get(i).getArrivalTime() <= currentTime) {
+                    readyQueue.add(processes.remove(i));
+                    i--; // Adjust for removal
                 }
             }
 
-            // If no current process or need to switch due to shorter remaining time
-            if (currentProcess == null || currentProcess.isFinished() ||
-                    (!readyQueue.isEmpty() && readyQueue.peek().getRemainingTime() < currentProcess.getRemainingTime())) {
+            // Sort readyQueue by remaining time (SRT)
+            readyQueue.sort((p1, p2) -> Integer.compare(p1.getRemainingTime(), p2.getRemainingTime()));
 
-                if (currentProcess != null && !currentProcess.isFinished()) {
-                    readyQueue.add(currentProcess);
-                }
-
-                if (!readyQueue.isEmpty()) {
-                    currentProcess = readyQueue.poll();
-
-                    // Dispatcher time rules: dispatcher only considers processes that arrived before or at the current time
-                    currentTime += dispatcherTime; // Apply dispatcher time when switching processes
-                    if (currentProcess.getStartTime() == 0) {
-                        currentProcess.setStartTime(currentTime);
-                    }
-
-                    System.out.println("T" + currentTime + ": " + currentProcess.getId());
+            if (currentProcess == null && !readyQueue.isEmpty()) {
+                // Pick the next process from the ready queue
+                currentProcess = readyQueue.remove(0);
+                // Simulate the dispatcher delay
+                currentTime += dispatcherTime;
+                if (currentProcess.getStartTime() == 0) {
+                    currentProcess.setStartTime(currentTime);
                 }
             }
 
-            // Execute the current process for one time unit
             if (currentProcess != null) {
+                // Run the process for 1 unit of time
                 currentProcess.runFor(1);
                 currentTime++;
 
-                // If the current process finishes, calculate its times
+                // Check if this process finishes
                 if (currentProcess.isFinished()) {
                     currentProcess.setFinishTime(currentTime);
-                    totalTurnaroundTime += currentProcess.getTurnaroundTime();
-                    totalWaitingTime += currentProcess.getWaitingTime();
-                    completedProcesses++;
+                    completedProcesses.add(currentProcess);
+                    currentProcess = null;  // Reset to select a new process
+                } else {
+                    // If a new process arrives with less remaining time, preempt
+                    if (!readyQueue.isEmpty() && readyQueue.get(0).getRemainingTime() < currentProcess.getRemainingTime()) {
+                        readyQueue.add(currentProcess);
+                        readyQueue.sort((p1, p2) -> Integer.compare(p1.getRemainingTime(), p2.getRemainingTime()));
+                        currentProcess = null;
+                    }
                 }
             } else {
-                currentTime++; // Increment time even if no process is ready
+                // If no process is ready, just move time forward
+                currentTime++;
             }
         }
 
-        averageTurnaroundTime = (double) totalTurnaroundTime / processes.size();
-        averageWaitingTime = (double) totalWaitingTime / processes.size();
-
+        calculateAverages();
         printResults();
+    }
+
+    private void calculateAverages() {
+        int totalTurnaroundTime = 0;
+        int totalWaitingTime = 0;
+        for (Process p : completedProcesses) {
+            totalTurnaroundTime += p.getTurnaroundTime();
+            totalWaitingTime += p.getWaitingTime();
+        }
+        averageTurnaroundTime = (double) totalTurnaroundTime / completedProcesses.size();
+        averageWaitingTime = (double) totalWaitingTime / completedProcesses.size();
     }
 
     @Override
     public void printResults() {
+        System.out.println("\nSRT:");
+        for (Process p : completedProcesses) {
+            System.out.printf("T%d: %s\n", p.getFinishTime() - p.getServiceTime(), p.getId());
+        }
         System.out.println("\nProcess  Turnaround Time  Waiting Time");
-        for (Process process : processes) {
-            System.out.printf("%-9s %-17d %-13d\n", process.getId(), process.getTurnaroundTime(), process.getWaitingTime());
+        for (Process p : completedProcesses) {
+            System.out.printf("%-9s %-15d %-12d\n", p.getId(), p.getTurnaroundTime(), p.getWaitingTime());
         }
     }
 

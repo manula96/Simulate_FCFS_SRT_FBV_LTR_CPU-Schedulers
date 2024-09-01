@@ -38,15 +38,15 @@ public class A1 {
             srt.schedule(processes, dispatcherTime);
 
             // Schedule using FBV
-            FBV fbv = new FBV();
-            fbv.schedule(processes, dispatcherTime);
+/*            FBV fbv = new FBV();
+            fbv.schedule(processes, dispatcherTime);*/
 
             // Print Summary
             System.out.println("\nSummary");
             System.out.printf("Algorithm  Average Turnaround Time  Waiting Time\n");
             System.out.printf("FCFS       %-23.2f %-14.2f\n", fcfs.getAverageTurnaroundTime(), fcfs.getAverageWaitingTime());
             System.out.printf("SRT        %-23.2f %-14.2f\n", srt.getAverageTurnaroundTime(), srt.getAverageWaitingTime());
-            System.out.printf("FBV        %-23.2f %-14.2f\n", fbv.getAverageTurnaroundTime(), fbv.getAverageWaitingTime());
+            //System.out.printf("FBV        %-23.2f %-14.2f\n", fbv.getAverageTurnaroundTime(), fbv.getAverageWaitingTime());
         } catch (FileNotFoundException e) {
             System.out.println("Error: File not found - " + inputFileName);
         } catch (Exception e) {
