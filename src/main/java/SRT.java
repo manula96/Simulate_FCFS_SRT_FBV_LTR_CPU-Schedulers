@@ -1,95 +1,89 @@
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
 
 public class SRT implements Scheduler {
-    private List<Process> completedProcesses = new ArrayList<>();
-    private double averageTurnaroundTime = 0.0;
-    private double averageWaitingTime = 0.0;
+    private List<Process> finishedProcesses = new ArrayList<>();
+    private List<String> executionOrder = new ArrayList<>();
 
     @Override
     public void schedule(List<Process> processes, int dispatcherTime) {
-        int currentTime = 0;
         List<Process> readyQueue = new ArrayList<>();
+        int currentTime = 0;
         Process currentProcess = null;
 
         while (!processes.isEmpty() || !readyQueue.isEmpty() || currentProcess != null) {
-            // Add all processes that have arrived to the ready queue
-            for (int i = 0; i < processes.size(); i++) {
-                if (processes.get(i).getArrivalTime() <= currentTime) {
-                    readyQueue.add(processes.remove(i));
-                    i--; // Adjust for removal
-                }
+            // Move processes that have arrived to the ready queue
+            while (!processes.isEmpty() && processes.get(0).getArrivalTime() <= currentTime) {
+                readyQueue.add(processes.remove(0));
             }
 
-            // Sort readyQueue by remaining time (SRT)
+            // Sort the ready queue by the remaining time (Shortest Remaining Time first)
             readyQueue.sort((p1, p2) -> Integer.compare(p1.getRemainingTime(), p2.getRemainingTime()));
 
+            // Handle context switching if necessary
             if (currentProcess == null && !readyQueue.isEmpty()) {
-                // Pick the next process from the ready queue
+                // Select the first process from the queue
                 currentProcess = readyQueue.remove(0);
-                // Simulate the dispatcher delay
-                currentTime += dispatcherTime;
+                executionOrder.add("T" + currentTime + ": " + currentProcess.getId());
+                currentTime += dispatcherTime;  // Add dispatcher time when a new process is selected
+                if (currentProcess.getStartTime() == 0) {
+                    currentProcess.setStartTime(currentTime);
+                }
+            } else if (currentProcess != null && !readyQueue.isEmpty() && currentProcess.getRemainingTime() > readyQueue.get(0).getRemainingTime()) {
+                // If a process with a shorter remaining time arrives, preempt the current process
+                readyQueue.add(currentProcess);
+                currentProcess = readyQueue.remove(0);
+                executionOrder.add("T" + currentTime + ": " + currentProcess.getId());
+                currentTime += dispatcherTime;  // Add dispatcher time for context switch
                 if (currentProcess.getStartTime() == 0) {
                     currentProcess.setStartTime(currentTime);
                 }
             }
 
+            // Run the process for 1ms
             if (currentProcess != null) {
-                // Run the process for 1 unit of time
                 currentProcess.runFor(1);
                 currentTime++;
 
-                // Check if this process finishes
+                // Check if the current process is finished
                 if (currentProcess.isFinished()) {
                     currentProcess.setFinishTime(currentTime);
-                    completedProcesses.add(currentProcess);
-                    currentProcess = null;  // Reset to select a new process
-                } else {
-                    // If a new process arrives with less remaining time, preempt
-                    if (!readyQueue.isEmpty() && readyQueue.get(0).getRemainingTime() < currentProcess.getRemainingTime()) {
-                        readyQueue.add(currentProcess);
-                        readyQueue.sort((p1, p2) -> Integer.compare(p1.getRemainingTime(), p2.getRemainingTime()));
-                        currentProcess = null;
-                    }
+                    finishedProcesses.add(currentProcess);
+                    currentProcess = null;
                 }
             } else {
-                // If no process is ready, just move time forward
+                // No process is running; just move time forward
                 currentTime++;
             }
         }
 
-        calculateAverages();
         printResults();
-    }
-
-    private void calculateAverages() {
-        int totalTurnaroundTime = 0;
-        int totalWaitingTime = 0;
-        for (Process p : completedProcesses) {
-            totalTurnaroundTime += p.getTurnaroundTime();
-            totalWaitingTime += p.getWaitingTime();
-        }
-        averageTurnaroundTime = (double) totalTurnaroundTime / completedProcesses.size();
-        averageWaitingTime = (double) totalWaitingTime / completedProcesses.size();
     }
 
     @Override
     public void printResults() {
-        System.out.println("\nSRT:");
-        for (Process p : completedProcesses) {
-            System.out.printf("T%d: %s\n", p.getFinishTime() - p.getServiceTime(), p.getId());
+        System.out.println();
+        System.out.println("SRT:");
+
+        // Print the execution order
+        for (String log : executionOrder) {
+            System.out.println(log);
         }
+
+        // Sort finished processes by their ID (to ensure correct order in the output)
+        finishedProcesses.sort((p1, p2) -> p1.getId().compareTo(p2.getId()));
+
         System.out.println("\nProcess  Turnaround Time  Waiting Time");
-        for (Process p : completedProcesses) {
-            System.out.printf("%-9s %-15d %-12d\n", p.getId(), p.getTurnaroundTime(), p.getWaitingTime());
+        for (Process p : finishedProcesses) {
+            System.out.printf("%s       %-17d %d\n", p.getId(), p.getTurnaroundTime(), p.getWaitingTime());
         }
     }
 
     public double getAverageTurnaroundTime() {
-        return averageTurnaroundTime;
+        return finishedProcesses.stream().mapToDouble(Process::getTurnaroundTime).average().orElse(0.0);
     }
 
     public double getAverageWaitingTime() {
-        return averageWaitingTime;
+        return finishedProcesses.stream().mapToDouble(Process::getWaitingTime).average().orElse(0.0);
     }
 }
