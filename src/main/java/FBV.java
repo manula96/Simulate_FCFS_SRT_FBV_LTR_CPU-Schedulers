@@ -1,150 +1,119 @@
-/*
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 
 public class FBV implements Scheduler {
-    private List<Process> processes;
-
-    private double averageTurnaroundTime;
-    private double averageWaitingTime;
-
-    private static class ProcessWithQueue3Time {
-        Process process;
-        int timeInQueue3;
-
-        ProcessWithQueue3Time(Process process) {
-            this.process = process;
-            this.timeInQueue3 = 0;
-        }
-    }
+    private List<Process> finishedProcesses = new ArrayList<>();
+    private List<String> executionOrder = new ArrayList<>();
+    private int[] timeQuanta = {2, 4, 4}; // Time quanta for the three levels
 
     @Override
     public void schedule(List<Process> processes, int dispatcherTime) {
-        this.processes = new LinkedList<>(processes);
-
-        Queue<Process> queue1 = new LinkedList<>();
-        Queue<Process> queue2 = new LinkedList<>();
-        Queue<ProcessWithQueue3Time> queue3 = new LinkedList<>();
-
-        int currentTime = 0;
-        int totalTurnaroundTime = 0;
-        int totalWaitingTime = 0;
-
-        for (Process process : processes) {
-            queue1.add(process);
+        Queue<Process>[] queues = new LinkedList[3];
+        for (int i = 0; i < 3; i++) {
+            queues[i] = new LinkedList<>();
         }
 
-        System.out.println("\nFBV:");
+        int currentTime = 0;
+        Process currentProcess = null;
+        int currentQueueLevel = 0;
+        int timeInLowestQueue = 0; // Track time spent in the lowest priority queue
+        int timeInCurrentSlice = 0;
 
-        while (!queue1.isEmpty() || !queue2.isEmpty() || !queue3.isEmpty()) {
-            Process process = null;
+        while (!processes.isEmpty() || !queues[0].isEmpty() || !queues[1].isEmpty() || !queues[2].isEmpty() || currentProcess != null) {
+            // Move processes that have arrived to the highest priority queue
+            while (!processes.isEmpty() && processes.get(0).getArrivalTime() <= currentTime) {
+                queues[0].offer(processes.remove(0));
+            }
 
-            if (!queue1.isEmpty()) {
-                process = queue1.poll();
-                currentTime = Math.max(currentTime, process.getArrivalTime());
-                currentTime += dispatcherTime;
-                //System.out.println("Q1");
+            // If the current process is null or needs to switch, handle it
+            if (currentProcess == null || currentProcess.getRemainingTime() <= 0 ||
+                    (currentQueueLevel == 0 && timeInCurrentSlice >= timeQuanta[0]) ||
+                    (currentQueueLevel == 1 && timeInCurrentSlice >= timeQuanta[1]) ||
+                    (currentQueueLevel == 2 && timeInCurrentSlice >= timeQuanta[2])) {
 
-                System.out.println("T" + currentTime + ": " + process.getId());
-                currentTime = executeProcess(process, currentTime, 2, queue2);
-            } else if (!queue2.isEmpty()) {
-                process = queue2.poll();
-                //System.out.println("Q2");
+                if (currentProcess != null) {
+                    if (currentProcess.getRemainingTime() > 0) {
+                        if (currentQueueLevel < 2) {
+                            queues[currentQueueLevel + 1].offer(currentProcess); // Move to a lower priority queue
+                        } else {
+                            timeInLowestQueue += timeInCurrentSlice;
+                            if (timeInLowestQueue >= 16) {
+                                queues[0].offer(currentProcess); // Move back to the highest priority queue
+                                timeInLowestQueue = 0;
+                            } else {
+                                queues[currentQueueLevel].offer(currentProcess); // Stay in the same queue (Round-robin)
+                            }
+                        }
+                    } else {
+                        currentProcess.setFinishTime(currentTime);
+                        finishedProcesses.add(currentProcess);
+                    }
+                    currentProcess = null;
+                    timeInCurrentSlice = 0; // Reset the time slice counter
+                }
 
-                currentTime += dispatcherTime;
-                System.out.println("T" + currentTime + ": " + process.getId());
-                currentTime = executeProcess(process, currentTime, 4, queue3);
-            } else if (!queue3.isEmpty()) {
-                ProcessWithQueue3Time pwqt = queue3.poll();
-                process = pwqt.process;
-                //System.out.println("Q3");
+                // Select the next process to run from the highest priority available queue
+                for (int i = 0; i < 3; i++) {
+                    if (!queues[i].isEmpty()) {
+                        currentProcess = queues[i].poll();
+                        currentQueueLevel = i;
+                        currentTime += dispatcherTime; // Always add dispatcher time before a new process starts
+                        executionOrder.add("T" + currentTime + ": " + currentProcess.getId());
+                        break;
+                    }
+                }
+            }
 
-                currentTime += dispatcherTime;
-                System.out.println("T" + currentTime + ": " + process.getId());
-                currentTime = executeProcessInQueue3(pwqt, currentTime, 4, queue1, queue3);
+            // Run the current process
+            if (currentProcess != null) {
+                int timeSlice = timeQuanta[currentQueueLevel];
+                int actualTime = Math.min(timeSlice - timeInCurrentSlice, currentProcess.getRemainingTime());
+                currentProcess.runFor(actualTime);
+                currentTime += actualTime;
+                timeInCurrentSlice += actualTime;
+
+                // Check if the current process has finished
+                if (currentProcess.isFinished()) {
+                    currentProcess.setFinishTime(currentTime);
+                    finishedProcesses.add(currentProcess);
+                    currentProcess = null;
+                    timeInLowestQueue = 0; // Reset the counter for time spent in the lowest priority queue
+                    timeInCurrentSlice = 0;
+                }
             } else {
                 currentTime++;
             }
-
-            if (process != null && process.isFinished()) {
-                process.setFinishTime(currentTime);
-                totalTurnaroundTime += process.getTurnaroundTime();
-                totalWaitingTime += process.getWaitingTime();
-            }
         }
-
-        averageTurnaroundTime = (double) totalTurnaroundTime / processes.size();
-        averageWaitingTime = (double) totalWaitingTime / processes.size();
 
         printResults();
     }
 
-    private int executeProcess(Process process, int currentTime, int timeQuantum, Queue<?> nextQueue) {
-        if (process.getStartTime() == 0) {
-            process.setStartTime(currentTime);
-        }
-
-        int runTime = Math.min(process.getRemainingTime(), timeQuantum);
-        process.runFor(runTime);
-        currentTime += runTime;
-
-        if (process.getRemainingTime() > 0) {
-            if (nextQueue instanceof Queue) {
-                ((Queue<Process>) nextQueue).add(process);
-            } else if (nextQueue instanceof Queue) {
-                ((Queue<ProcessWithQueue3Time>) nextQueue).add(new ProcessWithQueue3Time(process));
-            }
-        } else {
-            process.setFinishTime(currentTime);
-        }
-
-        return currentTime;
-    }
-
-    private int executeProcessInQueue3(ProcessWithQueue3Time pwqt, int currentTime, int timeQuantum, Queue<Process> queue1, Queue<ProcessWithQueue3Time> queue3) {
-        Process process = pwqt.process;
-
-        int runTime = Math.min(process.getRemainingTime(), timeQuantum);
-        process.runFor(runTime);
-        currentTime += runTime;
-
-        pwqt.timeInQueue3 += runTime;
-
-        if (process.getRemainingTime() > 0) {
-            if (pwqt.timeInQueue3 >= 16) {
-                System.out.println("T" + currentTime + ": " + process.getId() + " (Boosted)");
-                queue1.add(process);
-            } else {
-                queue3.add(pwqt);
-            }
-        } else {
-            process.setFinishTime(currentTime);
-        }
-
-        return currentTime;
-    }
-
     @Override
     public void printResults() {
-        System.out.println("\nProcess  Turnaround Time  Waiting Time");
-        for (Process process : processes) {
-            int turnaroundTime = process.getFinishTime() - process.getArrivalTime();
-            int waitingTime = turnaroundTime - process.getServiceTime();
-            System.out.printf("%-9s %-17d %-13d\n", process.getId(), turnaroundTime, waitingTime);
+        System.out.println();
+        System.out.println("FBV:");
+
+        // Print the execution order
+        for (String log : executionOrder) {
+            System.out.println(log);
         }
 
-        System.out.println("\nSummary");
-        System.out.printf("Algorithm  Average Turnaround Time  Average Waiting Time\n");
-        System.out.printf("FBV        %.2f                    %.2f\n", averageTurnaroundTime, averageWaitingTime);
+        // Sort finished processes by their ID (to ensure correct order in the output)
+        finishedProcesses.sort((p1, p2) -> p1.getId().compareTo(p2.getId()));
+
+        System.out.println("\nProcess  Turnaround Time  Waiting Time");
+        for (Process p : finishedProcesses) {
+            System.out.printf("%s       %-17d %d\n", p.getId(), p.getTurnaroundTime(), p.getWaitingTime());
+        }
     }
 
     public double getAverageTurnaroundTime() {
-        return averageTurnaroundTime;
+        return finishedProcesses.stream().mapToDouble(Process::getTurnaroundTime).average().orElse(0.0);
     }
 
     public double getAverageWaitingTime() {
-        return averageWaitingTime;
+        return finishedProcesses.stream().mapToDouble(Process::getWaitingTime).average().orElse(0.0);
     }
 }
-*/

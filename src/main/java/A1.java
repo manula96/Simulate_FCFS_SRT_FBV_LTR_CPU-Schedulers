@@ -31,26 +31,35 @@ public class A1 {
 
             // Schedule using FCFS
             FCFS fcfs = new FCFS();
-            fcfs.schedule(processes, dispatcherTime);
+            fcfs.schedule(cloneProcesses(processes), dispatcherTime);
 
             // Schedule using SRT
             SRT srt = new SRT();
-            srt.schedule(processes, dispatcherTime);
+            srt.schedule(cloneProcesses(processes), dispatcherTime);
 
             // Schedule using FBV
-/*            FBV fbv = new FBV();
-            fbv.schedule(processes, dispatcherTime);*/
+            FBV fbv = new FBV();
+            fbv.schedule(cloneProcesses(processes), dispatcherTime);
 
             // Print Summary
             System.out.println("\nSummary");
             System.out.printf("Algorithm  Average Turnaround Time  Waiting Time\n");
             System.out.printf("FCFS       %-23.2f %-14.2f\n", fcfs.getAverageTurnaroundTime(), fcfs.getAverageWaitingTime());
             System.out.printf("SRT        %-23.2f %-14.2f\n", srt.getAverageTurnaroundTime(), srt.getAverageWaitingTime());
-            //System.out.printf("FBV        %-23.2f %-14.2f\n", fbv.getAverageTurnaroundTime(), fbv.getAverageWaitingTime());
+            System.out.printf("FBV        %-23.2f %-14.2f\n", fbv.getAverageTurnaroundTime(), fbv.getAverageWaitingTime());
         } catch (FileNotFoundException e) {
             System.out.println("Error: File not found - " + inputFileName);
         } catch (Exception e) {
             System.out.println("Error: " + e.getMessage());
         }
+    }
+
+    // Helper method to clone the list of processes
+    private static List<Process> cloneProcesses(List<Process> processes) {
+        List<Process> clonedProcesses = new ArrayList<>();
+        for (Process p : processes) {
+            clonedProcesses.add(new Process(p.getId(), p.getArrivalTime(), p.getServiceTime(), p.getTickets()));
+        }
+        return clonedProcesses;
     }
 }
