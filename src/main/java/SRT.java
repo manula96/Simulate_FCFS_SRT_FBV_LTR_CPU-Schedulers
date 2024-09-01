@@ -24,8 +24,8 @@ public class SRT implements Scheduler {
             if (currentProcess == null && !readyQueue.isEmpty()) {
                 // Select the first process from the queue
                 currentProcess = readyQueue.remove(0);
-                executionOrder.add("T" + currentTime + ": " + currentProcess.getId());
                 currentTime += dispatcherTime;  // Add dispatcher time when a new process is selected
+                executionOrder.add("T" + currentTime + ": " + currentProcess.getId());
                 if (currentProcess.getStartTime() == 0) {
                     currentProcess.setStartTime(currentTime);
                 }
@@ -33,8 +33,8 @@ public class SRT implements Scheduler {
                 // If a process with a shorter remaining time arrives, preempt the current process
                 readyQueue.add(currentProcess);
                 currentProcess = readyQueue.remove(0);
-                executionOrder.add("T" + currentTime + ": " + currentProcess.getId());
                 currentTime += dispatcherTime;  // Add dispatcher time for context switch
+                executionOrder.add("T" + currentTime + ": " + currentProcess.getId());
                 if (currentProcess.getStartTime() == 0) {
                     currentProcess.setStartTime(currentTime);
                 }
