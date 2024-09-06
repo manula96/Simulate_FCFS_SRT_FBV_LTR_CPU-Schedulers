@@ -16,7 +16,7 @@ public class A1 {
             Queue<Integer> randomNumbers = new LinkedList<>();
 
             boolean readingProcesses = true;
-
+            //Preprocess the input to capture the details
             while (scanner.hasNextLine()) {
                 String line = scanner.nextLine().trim();
                 if (line.startsWith("DISP:")) {
@@ -58,7 +58,8 @@ public class A1 {
             System.out.printf("FCFS       %-23.2f %-14.2f\n", fcfs.getAverageTurnaroundTime(), fcfs.getAverageWaitingTime());
             System.out.printf("SRT        %-23.2f %-14.2f\n", srt.getAverageTurnaroundTime(), srt.getAverageWaitingTime());
             System.out.printf("FBV        %-23.2f %-14.2f\n", fbv.getAverageTurnaroundTime(), fbv.getAverageWaitingTime());
-            System.out.printf("LTR        %-23.2f %-14.2f\n", ltr.getAverageTurnaroundTime(), ltr.getAverageWaitingTime());        } catch (FileNotFoundException e) {
+            System.out.printf("LTR        %-23.2f %-14.2f\n", ltr.getAverageTurnaroundTime(), ltr.getAverageWaitingTime());
+        } catch (FileNotFoundException e) {
             System.out.println("Error: File not found - " + inputFileName);
         } catch (Exception e) {
             System.out.println("Error: " + e.getMessage());
