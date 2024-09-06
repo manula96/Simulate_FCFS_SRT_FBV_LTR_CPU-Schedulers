@@ -15,6 +15,8 @@ public class LTR implements Scheduler {
         Queue<Process> readyQueue = new LinkedList<>();
         List<Process> allProcesses = new ArrayList<>(processes);  // Track all processes
         int currentTime = 0;
+        Process currentProcess = null;
+
 
         // Initial dispatcher time before starting the first process
         currentTime += dispatcherTime;
@@ -29,6 +31,10 @@ public class LTR implements Scheduler {
                     processIterator.remove(); // Remove the process from the list once it's added to the readyQueue
                 }
             }
+            if( currentProcess != null){
+                readyQueue.offer(currentProcess);
+                currentProcess = null;
+            }
 
             if (readyQueue.isEmpty()) {
                 currentTime++;  // No processes are ready to run, so move time forward
@@ -37,21 +43,26 @@ public class LTR implements Scheduler {
 
             // Total tickets calculation
             int totalTickets = readyQueue.stream().mapToInt(Process::getTickets).sum();
+//            System.out.println("Total Tickets: " + totalTickets);
+//            System.out.println("Ready Queue Process Count: " + readyQueue.size());
 
             // Use the next random number from the input file
             if (randomNumbers.isEmpty()) {
                 throw new IllegalStateException("No more random numbers available to continue scheduling.");
             }
             int randomNum = randomNumbers.poll();
-            int winnerTicket = randomNum % totalTickets;  // Scale down the random number to be within the range
+            // Scale down the random number to be within the range
+            int winnerTicket = randomNum % totalTickets;
 
             // Determine the winning process using a counter
             int counter = 0;
-            Process currentProcess = null;
+
             for (Process p : readyQueue) {
                 counter += p.getTickets();
+
                 if (counter > winnerTicket) {
                     currentProcess = p; // Found the winner
+//                    System.out.println("Found the winner : " + p.getId() + " : "+ p.getTickets() + ": Counter : " + counter);
                     break;
                 }
             }
@@ -65,14 +76,14 @@ public class LTR implements Scheduler {
                 int timeToRun = Math.min(timeQuantum, currentProcess.getRemainingTime());
                 currentProcess.runFor(timeToRun);
                 currentTime += timeToRun;
+//                System.out.println("Current Time: " + currentTime + " time to run :  " + timeToRun );
 
                 // If the process finishes, log its completion and adjust totalTickets
                 if (currentProcess.isFinished()) {
                     currentProcess.setFinishTime(currentTime);
+
                     finishedProcesses.add(currentProcess);
-                } else {
-                    // Process hasn't finished, so requeue it
-                    readyQueue.offer(currentProcess);
+                    currentProcess = null;
                 }
 
                 // Add dispatcher time after every process switch
