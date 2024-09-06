@@ -1,7 +1,4 @@
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Queue;
+import java.util.*;
 
 public class LTR implements Scheduler {
     private List<Process> finishedProcesses = new ArrayList<>();
@@ -19,56 +16,67 @@ public class LTR implements Scheduler {
         List<Process> allProcesses = new ArrayList<>(processes);  // Track all processes
         int currentTime = 0;
 
+        // Initial dispatcher time before starting the first process
+        currentTime += dispatcherTime;
+
         while (!readyQueue.isEmpty() || !allProcesses.isEmpty()) {
             // Move processes that have arrived to the ready queue
-            while (!allProcesses.isEmpty() && allProcesses.get(0).getArrivalTime() <= currentTime) {
-                readyQueue.offer(allProcesses.remove(0));
+            Iterator<Process> processIterator = allProcesses.iterator();
+            while (processIterator.hasNext()) {
+                Process p = processIterator.next();
+                if (p.getArrivalTime() <= currentTime) {
+                    readyQueue.offer(p);
+                    processIterator.remove(); // Remove the process from the list once it's added to the readyQueue
+                }
             }
 
             if (readyQueue.isEmpty()) {
-                currentTime++;
+                currentTime++;  // No processes are ready to run, so move time forward
                 continue;
             }
 
             // Total tickets calculation
-            int totalTickets = 0;
-            for (Process p : readyQueue) {
-                totalTickets += p.getTickets();
+            int totalTickets = readyQueue.stream().mapToInt(Process::getTickets).sum();
+
+            // Use the next random number from the input file
+            if (randomNumbers.isEmpty()) {
+                throw new IllegalStateException("No more random numbers available to continue scheduling.");
             }
-
-            // Draw a random number to determine the winner
             int randomNum = randomNumbers.poll();
-            int winnerTicket = randomNum % totalTickets;
+            int winnerTicket = randomNum % totalTickets;  // Scale down the random number to be within the range
 
-            // Diagnostic Output
-            System.out.println("Time: " + currentTime + ", Random Number: " + randomNum + ", Winner Ticket: " + winnerTicket);
-
-            // Determine the winning process
-            int ticketCounter = 0;
+            // Determine the winning process using a counter
+            int counter = 0;
             Process currentProcess = null;
             for (Process p : readyQueue) {
-                ticketCounter += p.getTickets();
-                if (ticketCounter > winnerTicket) {
-                    currentProcess = p;
+                counter += p.getTickets();
+                if (counter > winnerTicket) {
+                    currentProcess = p; // Found the winner
                     break;
                 }
             }
 
             if (currentProcess != null) {
                 readyQueue.remove(currentProcess);
-                currentTime += dispatcherTime; // Apply dispatcher time before running the process
+
+                // Process runs for the time quantum or until it finishes
                 executionOrder.add("T" + currentTime + ": " + currentProcess.getId());
 
                 int timeToRun = Math.min(timeQuantum, currentProcess.getRemainingTime());
                 currentProcess.runFor(timeToRun);
                 currentTime += timeToRun;
 
+                // If the process finishes, log its completion and adjust totalTickets
                 if (currentProcess.isFinished()) {
                     currentProcess.setFinishTime(currentTime);
                     finishedProcesses.add(currentProcess);
                 } else {
-                    readyQueue.offer(currentProcess); // Re-enter the process at the end of the queue
+                    // Process hasn't finished, so requeue it
+                    readyQueue.offer(currentProcess);
                 }
+
+                // Add dispatcher time after every process switch
+                currentTime += dispatcherTime;
             }
         }
 
@@ -86,7 +94,7 @@ public class LTR implements Scheduler {
         }
 
         // Sort finished processes by their ID (to ensure correct order in the output)
-        finishedProcesses.sort((p1, p2) -> p1.getId().compareTo(p2.getId()));
+        finishedProcesses.sort(Comparator.comparing(Process::getId));
 
         System.out.println("\nProcess  Turnaround Time  Waiting Time");
         for (Process p : finishedProcesses) {
